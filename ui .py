@@ -1,9 +1,8 @@
-from os import listdir, path
+from os import path
 import numpy as np
-import scipy, cv2, os, sys, argparse, audio
-import json, subprocess, random, string
+import cv2, os, audio
+import subprocess
 from tqdm import tqdm
-from glob import glob
 import torch, face_detection
 from models import Wav2Lip
 import platform
@@ -220,10 +219,10 @@ def inference(checkpoint_path, face, audioInput, pads, resize_factor, nosmooth):
 
 with gr.Blocks() as ui:
     with gr.Row():
-        video = gr.File(label="Video or Image", info="Filepath of video/image that contains faces to use",examples="/home/team1/Sakthivel_f22/Wav2Lip-WebUI/inputs/modi.jpg")
-        grAudio = gr.File(label="Audio", info="Filepath of video/audio file to use as raw audio source",examples="/home/team1/Sakthivel_f22/Wav2Lip-WebUI/inputs/input.mp3")
+        video_or_image = gr.File(label="Video or Image", info="Filepath of video/image that contains faces to use")
+        Audio = gr.File(label="Audio", info="Filepath of video/audio file to use as raw audio source")
         with gr.Column():
-            checkpoint = gr.Radio(["wav2lip", "wav2lip_gan"], label="Checkpoint", info="Name of saved checkpoint to load weights from")
+            checkpoint = gr.Radio(["wav2lip", "wav2lip_gan"], label="Model", info="Name of saved checkpoint to load weights from")
             no_smooth = gr.Checkbox(label="No Smooth", info="Prevent smoothing face detections over a short temporal window")
             resize_factor = gr.Slider(minimum=1, maximum=4, step=1, label="Resize Factor", info="Reduce the resolution by this factor. Sometimes, best results are obtained at 480p or 720p")
     with gr.Row():
@@ -235,20 +234,26 @@ with gr.Blocks() as ui:
             generate_btn = gr.Button("Generate")
         with gr.Column():
             result = gr.Video()
+    gr.Examples(
+        examples=[["/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_video/input1.jpg","/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_audio/input1.mp3"],["/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_video/input2.mp4","/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_audio/input2.mp3"],["/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_video/input3.mp4","/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_audio/input3.wav"],["/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_video/input4.mp4","/home/team1/Sakthivel_f22/wav2lip-lipsync/inputs/input_audio/input4.mp3"]],
+        inputs=[video_or_image,Audio]
+		)
+    
 
-    def generate(video, grAudio, checkpoint, no_smooth, resize_factor, pad_top, pad_bottom, pad_left, pad_right):
-        if video is None or grAudio is None or checkpoint is None:
+    def generate(video_or_image, Audio, checkpoint, no_smooth, resize_factor, pad_top, pad_bottom, pad_left, pad_right):
+        if video_or_image is None or Audio is None or checkpoint is None:
             return
 
         # y1 y2 x1 x2
         # [pad_top,pad_bottom,pad_left,pad_right]
         pads = [pad_top, pad_bottom, pad_left, pad_right]
-        inference("checkpoints/" + checkpoint + ".pth", video.name, grAudio.name, pads, resize_factor, no_smooth)
+        inference("checkpoints/" + checkpoint + ".pth", video_or_image.name, Audio.name, pads, resize_factor, no_smooth)
         return "results/result_voice.mp4"
-
     generate_btn.click(
         generate, 
-        [video, grAudio, checkpoint, no_smooth, resize_factor, pad_top, pad_bottom, pad_left, pad_right], 
+        [video_or_image, Audio, checkpoint, no_smooth, resize_factor, pad_top, pad_bottom, pad_left, pad_right], 
         result)
+	
 
-ui.launch(inbrowser=True)
+
+ui.launch(inbrowser=True,server_name="0.0.0.0")
